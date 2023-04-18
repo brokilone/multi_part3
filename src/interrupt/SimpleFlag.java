@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleFlag {
+  public static volatile boolean stop = false;
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -12,15 +13,9 @@ public class SimpleFlag {
       Thread worker = new Thread(new Runnable() {
         @Override
         public void run() {
-          while (!Thread.currentThread().isInterrupted()) {
-            Runnable task = null;
-            try {
-              task = queue.get();
-              task.run();
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            }
-
+          while (!stop) {
+            Runnable task = queue.get();
+            task.run();
           }
         }
       });
@@ -32,7 +27,7 @@ public class SimpleFlag {
 
       Thread.sleep(3000);
 
-      worker.interrupt();
+      stop = true;
     }
 
     public static Runnable createTask(int number) {
@@ -43,7 +38,7 @@ public class SimpleFlag {
           try {
             Thread.sleep(1000);
           } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            e.printStackTrace();
           }
           System.out.println("Task finished: " + number);
         }
@@ -53,10 +48,13 @@ public class SimpleFlag {
     static class InnerQueue {
       List<Runnable> tasks = new ArrayList<>();
 
-      public synchronized Runnable get() throws InterruptedException {
+      public synchronized Runnable get() {
         while (tasks.isEmpty()) {
+          try {
             wait();
-
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
         }
         Runnable task = tasks.get(0);
         tasks.remove(task);
